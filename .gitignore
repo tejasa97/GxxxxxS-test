@@ -1,0 +1,5 @@
+.vscode/
+htmlcov/
+*/__pycache__/*
+*.pyc
+.coverage
