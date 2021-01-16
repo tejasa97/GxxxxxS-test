@@ -146,6 +146,86 @@ class DeliveryTestCases(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), expected_delivery_response_data)
 
+    def test_case_8(self):
+        """Test easy order combination [95, 5] for slot 2
+        (OPTIMAL) Optimal soln is [truck]
+        """
+
+        url = reverse("assign_slot_orders", kwargs={"slot_number": 4})
+        orders_api_data = generate_orders_data([95, 5])
+        expected_delivery_response_data = [
+            {'vehicle_type': 'truck', 'delivery_vendor_id': 1,
+                'list_order_ids_assigned': [1, 2]},
+        ]
+
+        response = self.client.post(url, data=json.dumps(
+            orders_api_data), content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), expected_delivery_response_data)
+
+    def test_case_9(self):
+        """Test easy order combination [30, 10, 20, 40] for slot 2
+        (NON OPTIMAL) Optimal soln is [scooter, scooter]; obtained is [scooter, bike, bike]
+        """
+
+        url = reverse("assign_slot_orders", kwargs={"slot_number": 2})
+        orders_api_data = generate_orders_data([30, 10, 20, 40])
+        expected_delivery_response_data = \
+            [
+                {'vehicle_type': 'scooter', 'delivery_vendor_id': 1,
+                    'list_order_ids_assigned': [2, 4]},
+                {'vehicle_type': 'bike', 'delivery_vendor_id': 1, 'list_order_ids_assigned': [1]},
+                {'vehicle_type': 'bike', 'delivery_vendor_id': 2, 'list_order_ids_assigned': [3]}
+            ]
+
+        response = self.client.post(url, data=json.dumps(
+            orders_api_data), content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), expected_delivery_response_data)
+
+    def test_case_10(self):
+        """Test easy order combination [30, 10, 20, 40] for slot 4
+        (OPTIMAL) Optimal soln is [truck]
+        """
+
+        url = reverse("assign_slot_orders", kwargs={"slot_number": 4})
+        orders_api_data = generate_orders_data([30, 10, 20, 40])
+        expected_delivery_response_data = [
+            {'vehicle_type': 'truck', 'delivery_vendor_id': 1,
+                'list_order_ids_assigned': [1, 2, 3, 4]},
+        ]
+
+        response = self.client.post(url, data=json.dumps(
+            orders_api_data), content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), expected_delivery_response_data)
+
+    def test_case_11(self):
+        """Test easy order combination [10, 10, 10, 5, 5, 2, 1, 2, 25] for slot 3
+        (NON OPTIMAL) Optimal soln is [truck] (or is it???); obtained is [bike, bike, bike]
+        """
+
+        url = reverse("assign_slot_orders", kwargs={"slot_number": 3})
+        orders_api_data = generate_orders_data([10, 10, 10, 5, 5, 2, 1, 2, 25])
+        expected_delivery_response_data = \
+            [
+                {'vehicle_type': 'bike', 'delivery_vendor_id': 1,
+                    'list_order_ids_assigned': [4, 9]},
+                {'vehicle_type': 'bike', 'delivery_vendor_id': 2,
+                    'list_order_ids_assigned': [1, 2, 3]},
+                {'vehicle_type': 'bike', 'delivery_vendor_id': 3,
+                    'list_order_ids_assigned': [5, 6, 7, 8]}
+            ]
+
+        response = self.client.post(url, data=json.dumps(
+            orders_api_data), content_type="application/json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), expected_delivery_response_data)
+
     def test_invalid_orders_weight(self):
         """Test exception arises if sum of order weights exceeds 100
         """
