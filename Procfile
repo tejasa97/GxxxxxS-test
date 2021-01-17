@@ -1,0 +1,1 @@
+web: gunicorn grofers.wsgi:application --log-file -
