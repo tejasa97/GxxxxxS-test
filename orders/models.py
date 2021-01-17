@@ -138,6 +138,23 @@ class SlotDelivery(BaseModel):
         available_delivery_vehicles = VehicleType.get_delivery_vehicles_available(
             available_vehicle_types)  # all delivery vehicles available for the slot
 
+        return cls.assign_first_fit_delivery(
+            available_delivery_vehicles, orders, slot_delivery)
+
+    @classmethod
+    def assign_first_fit_delivery(cls, available_delivery_vehicles, orders, slot_delivery):
+        """Assigns the delivery vehicles with the First Fit Decreasing algorithm
+
+        :param available_delivery_vehicles: available `DeliveryVehicle` objects
+        :type available_delivery_vehicles: List[`DeliveryVehicle`]
+        :param orders: `Order` objects
+        :type orders: List[`Order`]
+        :param slot_delivery: `SlotDelivery` object
+        :raises cls.CannotAssignOrders: raised if there exists an order which cannot be assigned to any vehicle
+        :return: `DeliveryVehicleOrder` objects
+        :rtype: List[`DeliveryVehicleOrder`]
+        """
+
         delivery_vehicles_assigned = []
         # Go through orders in descending order of their weight
         for order in sorted(orders, key=lambda x: x.weight, reverse=True):
@@ -163,7 +180,63 @@ class SlotDelivery(BaseModel):
                         order_added = True
                         break
 
-            # if the order is just cannot be assigned
+            # if the orders just cannot be assigned
+            if order_added is False:
+                raise cls.CannotAssignOrders
+
+        return delivery_vehicles_assigned
+
+    @classmethod
+    def assign_best_fit_delivery(cls, available_delivery_vehicles, orders, slot_delivery):
+        """Assigns the delivery vehicles with the Best Fit Decreasing algorithm
+
+        :param available_delivery_vehicles: available `DeliveryVehicle` objects
+        :type available_delivery_vehicles: List[`DeliveryVehicle`]
+        :param orders: `Order` objects
+        :type orders: List[`Order`]
+        :param slot_delivery: `SlotDelivery` object
+        :raises cls.CannotAssignOrders: raised if there exists an order which cannot be assigned to any vehicle
+        :return: `DeliveryVehicleOrder` objects
+        :rtype: List[`DeliveryVehicleOrder`]
+        """
+
+        delivery_vehicles_assigned = []
+        # Go through orders in descending order of their weight
+        for order in sorted(orders, key=lambda x: x.weight, reverse=True):
+            order_added = False
+
+            if len(delivery_vehicles_assigned) > 0:
+                min_remainder = 101
+                best_fit_vehicle = None
+                for delivery_vehicle in delivery_vehicles_assigned:
+                    fit_metric = delivery_vehicle.capacity - order.weight
+
+                    if fit_metric < 0:
+                        continue
+                    if fit_metric < min_remainder:
+                        min_remainder = fit_metric
+                        best_fit_vehicle = delivery_vehicle
+
+                # If best fit vehicle found, add the order to it
+                if best_fit_vehicle is not None:
+                    best_fit_vehicle.add_order(order)
+                    order_added = True
+
+            if order_added == False:
+                # Assign a new delivery vehicle
+                for idx, vehicle in enumerate(available_delivery_vehicles):
+
+                    if vehicle.max_capacity >= order.weight:
+                        delivery_vehicle = available_delivery_vehicles.pop(idx)
+                        new_delivery_vehicle_assigned = delivery_vehicle.assign_vehicle(
+                            slot_delivery=slot_delivery)
+                        new_delivery_vehicle_assigned.add_order(order)
+
+                        delivery_vehicles_assigned.append(new_delivery_vehicle_assigned)
+                        order_added = True
+                        break
+
+            # if the orders just cannot be assigned
             if order_added is False:
                 raise cls.CannotAssignOrders
 
@@ -218,6 +291,15 @@ class DeliveryVehicleOrders(BaseModel):
 
         super().__init__(*args, **kwargs)
         self.capacity = self.delivery_vehicle.max_capacity
+
+    @property
+    def vehicle_type(self):
+        """Returns the vehicle's `VehicleType`
+
+        :return: `VehicleType` object
+        """
+
+        return self.delivery_vehicle.vehicle_type
 
     def add_order(self, order):
         """Adds an `Order` to the vehicle

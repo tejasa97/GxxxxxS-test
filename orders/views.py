@@ -25,16 +25,19 @@ class AssignSlotOrders(APIView):
         :type slot_number: int
         :return: JSON response
         """
+
         serializer = self.InputSerializer(data=request.data, many=True)
         serializer.is_valid(raise_exception=True)
 
         try:
             assigned_delivery_vehicle_orders = SlotDelivery.assign_new_batch_order_delivery(
-                int(slot_number), serializer.validated_data)
+                slot_number=slot_number, orders=serializer.validated_data)
         except SlotDelivery.OrdersWeightLimitError:
             raise exceptions.ParseError("Order weights exceeds limit (100 kgs)")
         except SlotDelivery.InvalidSlotNumber:
             raise exceptions.ParseError("Invalid Slot number provided")
+        except SlotDelivery.CannotAssignOrders:
+            raise exceptions.ParseError("Unable to assign to the available delivery vehicles")
 
         serialized_response = DeliveryVehicleOrdersSerializer(
             assigned_delivery_vehicle_orders, many=True)
